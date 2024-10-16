@@ -125,11 +125,21 @@ LabelsHolder::LabelsHolder(torch::IValue names, torch::Tensor values):
         );
     }
 
+    // labels_ = metatensor::Labels(
+    //     names_,
+    //     values_.to(torch::kCPU).contiguous().data_ptr<int32_t>(),
+    //     values_.sizes()[0]
+    // );
+
+    /// HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK
+    auto dummy_values = std::vector<int32_t>(values_.sizes()[0]);
+    std::iota(std::begin(dummy_values), std::end(dummy_values), 1);
     labels_ = metatensor::Labels(
-        names_,
-        values_.to(torch::kCPU).contiguous().data_ptr<int32_t>(),
-        values_.sizes()[0]
+        {"do_not_use_this_code"},
+        dummy_values.data(),
+        dummy_values.size()
     );
+    /// HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK-HACK
 
     // register the torch tensor as a custom user data stored inside the labels
     auto user_data = metatensor::LabelsUserData(
