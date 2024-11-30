@@ -383,6 +383,7 @@ class MetatensorCalculator(ase.calculators.calculator.Calculator):
                         break
                 if is_soap_bpnn:
                     raw_forces = raw_forces[:, [2, 0, 1]]
+                raw_forces -= np.mean(raw_forces, axis=0)  # remove net force
                 self.results["forces"] = raw_forces
 
             if calculate_stress:
