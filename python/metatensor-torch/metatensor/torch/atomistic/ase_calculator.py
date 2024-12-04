@@ -301,7 +301,13 @@ class MetatensorCalculator(ase.calculators.calculator.Calculator):
             raise NotImplementedError("'stresses' are not implemented yet")
 
         with record_function("ASECalculator::prepare_inputs"):
-            outputs = {"mtt::forces": ModelOutput(
+            outputs = {
+                "energy": ModelOutput(
+                    quantity="",
+                    unit="",
+                    per_atom=False,
+                ),
+                "mtt::forces": ModelOutput(
                     quantity="",
                     unit="",
                     per_atom=True,
@@ -370,7 +376,7 @@ class MetatensorCalculator(ase.calculators.calculator.Calculator):
                 self.results["energies"] = energies_values.numpy()
 
             if calculate_energy:
-                self.results["energy"] = 0.0
+                self.results["energy"] = outputs["energy"].block().values.item()
 
             if calculate_forces:
                 forces_values = outputs["mtt::forces"].block().values.squeeze(-1)
