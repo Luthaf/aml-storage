@@ -393,7 +393,7 @@ class MetatensorCalculator(ase.calculators.calculator.Calculator):
                 self.results["forces"] = raw_forces
 
             if calculate_stress:
-                raise NotImplementedError()
+                self.results["stress"] = np.zeros((6,), dtype=np.float64)
 
             self.additional_outputs = {}
             for name in self._additional_output_requests:
