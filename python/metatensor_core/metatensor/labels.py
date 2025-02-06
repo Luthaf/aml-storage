@@ -789,6 +789,83 @@ class Labels:
         else:
             return None
 
+    def difference(self, other: "Labels") -> "Labels":
+        """
+        Take the union of these :py:class:`Labels` with ``other``.
+
+        If you want to know where entries in ``self`` and ``other`` ends up in the
+        union, you can use :py:meth:`Labels.union_and_mapping`.
+
+        >>> import numpy as np
+        >>> from metatensor import Labels
+        >>> first = Labels(names=["a", "b"], values=np.array([[0, 1], [1, 3], [0, 3], [2, 2]]))
+        >>> second = Labels(names=["a", "b"], values=np.array([[0, 3], [1, 3], [1, 2], [2, 1]]))
+        >>> first.difference(second)
+        Labels(
+            a  b
+            0  1
+            2  2
+        )
+        """
+        if self.is_view() or other.is_view():
+            raise ValueError(
+                "can not call `difference` with Labels view, call `to_owned` before"
+            )
+
+        output = mts_labels_t()
+        self._lib.mts_labels_difference(
+            self._as_mts_labels_t(), other._as_mts_labels_t(), output, None, 0
+        )
+
+        return Labels._from_mts_labels_t(output)
+    
+    def difference_and_mapping(
+        self, other: "Labels"
+    ) -> Tuple["Labels", np.ndarray, np.ndarray]:
+        """
+        Take the union of these :py:class:`Labels` with ``other``.
+
+        This function also returns the position in the union where each entry of the
+        input :py:class::`Labels` ended up.
+
+        :return: Tuple containing the union, a :py:class:`numpy.ndarray` containing the
+            position in the union of the entries from ``self``, and a
+            :py:class:`numpy.ndarray` containing the position in the union of the
+            entries from ``other``.
+
+        >>> import numpy as np
+        >>> from metatensor import Labels
+        >>> first = Labels(names=["a", "b"], values=np.array([[0, 1], [1, 3], [0, 3], [2, 2]]))
+        >>> second = Labels(names=["a", "b"], values=np.array([[0, 3], [1, 3], [1, 2], [2, 1]]))
+        >>> difference, mapping_1 = first.difference_and_mapping(second)
+        >>> difference
+        Labels(
+            a  b
+            0  1
+            2  2
+        )
+        >>> print(mapping_1)
+        [0 -1 -1 1]
+        """
+        if self.is_view() or other.is_view():
+            raise ValueError(
+                "can not call `difference_and_mapping` with Labels view, call `to_owned` "
+                "before"
+            )
+
+        output = mts_labels_t()
+        first_mapping = np.zeros(len(self), dtype=np.int64)
+
+        self._lib.mts_labels_difference(
+            self._as_mts_labels_t(),
+            other._as_mts_labels_t(),
+            output,
+            first_mapping.ctypes.data_as(ctypes.POINTER(ctypes.c_int64)),
+            len(first_mapping),
+        )
+
+        return Labels._from_mts_labels_t(output), first_mapping
+
     def union(self, other: "Labels") -> "Labels":
         """
         Take the union of these :py:class:`Labels` with ``other``.
