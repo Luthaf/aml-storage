@@ -871,6 +871,53 @@ struct mts_tensormap_t *mts_tensormap_keys_to_samples(const struct mts_tensormap
                                                       bool sort_samples);
 
 /**
+ * Gets the value of one of the "global" info strings of a TensorMap
+ *
+ * @param tensor pointer to an existing tensor map
+ * @param key string key of the entry we are trying to access
+ * @param value content of the info field, if present
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `MTS_SUCCESS`, you can use `mts_last_error()` to get the full
+ *          error message.
+ */
+mts_status_t mts_tensormap_get_info(const struct mts_tensormap_t *tensor,
+                                    const char *key,
+                                    char **value);
+
+/**
+ * Set (or update) an info field for the tensor map.
+ *
+ * @param tensor pointer to an existing tensor map
+ * @param key string key of the entry we are trying to set
+ * @param value content of the info field
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `MTS_SUCCESS`, you can use `mts_last_error()` to get the full
+ *          error message.
+ */
+mts_status_t mts_tensormap_set_info(struct mts_tensormap_t *tensor,
+                                    const char *key,
+                                    const char *value);
+
+/**
+ * Returns a list of strings containing the valid info fields in a TensorMap
+ *
+ * The caller will have to take care of free-ing the list of keys
+ *
+ * @param tensor pointer to an existing tensor map
+ * @param keys triple pointer to the returned list, so it can be allocated
+ * @param keys_count number of keys returned
+ *
+ * @returns The status code of this operation. If the status is not
+ *          `MTS_SUCCESS`, you can use `mts_last_error()` to get the full
+ *          error message.
+ */
+mts_status_t mts_tensormap_get_info_keys(const struct mts_tensormap_t *tensor,
+                                         const char *const **keys,
+                                         uintptr_t *keys_count);
+
+/**
  * Load labels from the file at the given path.
  *
  * Labels are stored using numpy's NPY format, so the file will typically use

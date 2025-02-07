@@ -370,5 +370,5 @@ pub unsafe extern fn mts_block_gradients_list(
             list.as_ptr().cast()
         };
         Ok(())
-    })
+    }) 
 }

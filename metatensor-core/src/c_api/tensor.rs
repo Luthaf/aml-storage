@@ -1,6 +1,8 @@
 use std::os::raw::c_char;
 use std::sync::Arc;
 use std::ffi::CStr;
+use std::ffi::CString;
+use crate::utils::ConstCString;
 use std::collections::BTreeSet;
 
 use crate::{TensorMap, TensorBlock, Error};
@@ -463,4 +465,115 @@ pub unsafe extern fn mts_tensormap_keys_to_samples(
     }
 
     return result;
+}
+
+
+/// Gets the value of one of the "global" info strings of a TensorMap
+/// 
+/// @param tensor pointer to an existing tensor map
+/// @param key string key of the entry we are trying to access
+/// @param value content of the info field, if present
+///
+/// @returns The status code of this operation. If the status is not
+///          `MTS_SUCCESS`, you can use `mts_last_error()` to get the full
+///          error message.
+#[no_mangle]
+pub unsafe extern fn mts_tensormap_get_info(
+    tensor: *const mts_tensormap_t,
+    key: *const c_char,
+    value: *mut *mut c_char,
+) -> mts_status_t {
+    catch_unwind(|| {
+        // Ensure that all pointers are non-null.
+        check_pointers_non_null!(tensor, key, value);
+
+        // Convert the C string key to a Rust string slice.
+        let key_str = CStr::from_ptr(key)
+            .to_str()
+            .map_err(|e| Error::InvalidParameter(format!("Invalid UTF-8 in key: {}", e)))?;
+        
+        // Access the tensor's info field.
+        if let Some(val) = &(*tensor).get_info(key_str) {
+            // Convert the Rust string value to a C string.
+            let c_val = CString::new(val.as_str())
+                .map_err(|e| Error::InvalidParameter(format!("CString conversion failed: {}", e)))?;
+            // Pass ownership of the C string to the caller.
+            *value = c_val.into_raw();
+            Ok(())
+        } else {
+            Err(Error::InvalidParameter(format!(
+                "key '{}' not present in tensor info",
+                key_str
+            )))
+        }
+    })
+}
+
+/// Set (or update) an info field for the tensor map.
+///
+/// @param tensor pointer to an existing tensor map
+/// @param key string key of the entry we are trying to set
+/// @param value content of the info field
+///
+/// @returns The status code of this operation. If the status is not
+///          `MTS_SUCCESS`, you can use `mts_last_error()` to get the full
+///          error message.
+#[no_mangle]
+pub unsafe extern fn mts_tensormap_set_info(
+    tensor: *mut mts_tensormap_t,
+    key: *const c_char,
+    value: *const c_char,
+) -> mts_status_t {
+    catch_unwind(|| {
+        // Ensure the provided pointers are non-null.
+        check_pointers_non_null!(tensor, key, value);
+
+        // Convert the key from a C string to a Rust string slice.
+        let key_str = CStr::from_ptr(key)
+            .to_str()
+            .map_err(|e| Error::InvalidParameter(format!("Invalid UTF-8 in key: {}", e)))?;
+        
+        // Convert the value from a C string to a Rust string slice.
+        let value_str = CStr::from_ptr(value)
+            .to_str()
+            .map_err(|e| Error::InvalidParameter(format!("Invalid UTF-8 in value: {}", e)))?;
+        
+        // Insert the key/value pair into the tensor's info field.
+        // This will add a new entry or update the existing one
+        (*tensor).add_info(key_str, 
+            &ConstCString::new(CString::new(value_str.to_owned()).expect("invalid C string")));
+        Ok(())
+    })
+}
+
+/// Returns a list of strings containing the valid info fields in a TensorMap
+///
+/// The caller will have to take care of free-ing the list of keys
+/// 
+/// @param tensor pointer to an existing tensor map
+/// @param keys triple pointer to the returned list, so it can be allocated
+/// @param keys_count number of keys returned
+///
+/// @returns The status code of this operation. If the status is not
+///          `MTS_SUCCESS`, you can use `mts_last_error()` to get the full
+///          error message.
+#[no_mangle]
+pub unsafe extern fn mts_tensormap_get_info_keys(
+    tensor: *const mts_tensormap_t,
+    keys: *mut *const *const c_char,
+    keys_count: *mut usize,
+) -> mts_status_t {
+    catch_unwind(|| {
+        check_pointers_non_null!(tensor, keys, keys_count);
+
+        let list = (*tensor).info_keys_c();
+        (*keys_count) = list.len();
+
+        (*keys) = if list.is_empty() {
+            std::ptr::null()
+        } else {
+            list.as_ptr().cast()
+        };
+        Ok(())
+    })
 }

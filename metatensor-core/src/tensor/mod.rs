@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::ffi::CString;
 
+use crate::utils::ConstCString;
 use crate::TensorBlock;
 use crate::{Labels, Error};
 use crate::get_data_origin;
@@ -24,7 +26,9 @@ mod keys_to_properties;
 pub struct TensorMap {
     keys: Arc<Labels>,
     blocks: Vec<TensorBlock>,
-    // TODO: arbitrary tensor-level metadata? e.g. using `HashMap<String, String>`
+    info: HashMap<String, ConstCString>,
+    // all the keys from `self.ingo`, as C-compatible strings
+    info_keys: Vec<ConstCString>
 }
 
 fn check_labels_names(
@@ -171,6 +175,8 @@ impl TensorMap {
         Ok(TensorMap {
             keys: keys,
             blocks,
+            info: HashMap::new(),
+            info_keys: Vec::new(),
         })
     }
 
@@ -184,7 +190,9 @@ impl TensorMap {
 
         return Ok(TensorMap {
             keys: Arc::clone(&self.keys),
-            blocks
+            blocks,
+            info: self.info.clone(),
+            info_keys: self.info_keys.clone()
         });
     }
 
@@ -270,6 +278,26 @@ impl TensorMap {
 
         return Ok(clone);
     }
+
+    // Accesors for info (to keep track of the c-compatible strings)
+    pub fn info_keys_c(&self) -> &[ConstCString] {
+        &self.info_keys
+    }
+
+    pub fn get_info(&self, key:&str) -> Option<&ConstCString> {
+        self.info.get(key)
+    }
+
+    pub fn add_info(&mut self, key:&str, value:&ConstCString) {
+        if !self.info.contains_key(key) {
+            self.info_keys.push(
+                ConstCString::new(
+                    CString::new(key.to_owned()).expect("invalid C string")
+                )
+            );
+        }
+        self.info.insert(key.to_owned(), value.clone());
+    }
 }
 
 
@@ -302,6 +330,12 @@ mod tests {
             vec![block_1, block_2],
         );
         assert!(result.is_ok());
+        // also check we have an empty info block
+        let mut result = result.unwrap();
+        assert!(result.info.is_empty());
+        // also check we can set info
+        result.info.insert("key".to_string(), 
+                          ConstCString::new(CString::new("value").expect("CString::new failed")));
 
         /**********************************************************************/
         let block_1 = TensorBlock::new(
@@ -403,7 +437,7 @@ mod tests {
             "invalid parameter: all blocks must have the same property names, \
             got [something_else] and [properties]"
         );
-
+        
         // TODO: check error messages for gradients
     }
 
