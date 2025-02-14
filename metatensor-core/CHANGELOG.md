@@ -17,6 +17,10 @@ a changelog](https://keepachangelog.com/en/1.1.0/) format. This project follows
 #### Removed
 -->
 
+### Added
+
+- `Labels::difference` for finding the set difference between two labels (#710).
+
 ### Changed
 
 - The default extension for file serialization is now `.mts` instead of `.npz`
